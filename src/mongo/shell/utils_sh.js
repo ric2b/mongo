@@ -61,6 +61,7 @@ sh.help = function() {
     print("\tsh.disableBalancing(coll)                 disable balancing on one collection");
     print("\tsh.enableBalancing(coll)                  re-enable balancing on one collection");
     print("\tsh.enableSharding(dbname)                 enables sharding on the database dbname");
+    print("\tsh.enableGeoSharding(dbname)              enables geo sharding on the database dbname");
     print("\tsh.getBalancerState()                     returns whether the balancer is enabled");
     print(
         "\tsh.isBalancerRunning()                    return true if the balancer has work in progress on any mongos");
@@ -96,6 +97,11 @@ sh.addShard = function(url) {
 sh.enableSharding = function(dbname) {
     assert(dbname, "need a valid dbname");
     return sh._adminCommand({enableSharding: dbname});
+};
+
+sh.enableGeoSharding = function(dbname) {
+    assert(dbname, "it works");
+    return sh._adminCommand({enableGeoSharding: dbname});
 };
 
 sh.shardCollection = function(fullName, key, unique, options) {
