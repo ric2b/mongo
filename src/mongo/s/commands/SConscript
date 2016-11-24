@@ -29,6 +29,7 @@ env.Library(
         'cluster_db_stats_cmd.cpp',
         'cluster_drop_database_cmd.cpp',
         'cluster_enable_sharding_cmd.cpp',
+        'cluster_enable_geo_sharding_cmd.cpp',
         'cluster_explain.cpp',
         'cluster_explain_cmd.cpp',
         'cluster_find_and_modify_cmd.cpp',
