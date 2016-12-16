@@ -41,6 +41,7 @@
 #include "mongo/db/query/canonical_query.h"
 #include "mongo/util/mongoutils/str.h"
 
+
 namespace mongo {
 
 using std::make_pair;
@@ -73,6 +74,10 @@ static bool isHashedPatternEl(const BSONElement& el) {
     return el.type() == String && el.String() == IndexNames::HASHED;
 }
 
+static bool is2dSpherePatternEl(const BSONElement& el) {
+    return el.type() == String && el.String() == IndexNames::GEO_2DSPHERE;
+}
+
 /**
  * Currently the allowable shard keys are either
  * i) a hashed single field, e.g. { a : "hashed" }, or
@@ -83,6 +88,7 @@ static vector<FieldRef*> parseShardKeyPattern(const BSONObj& keyPattern) {
     static const vector<FieldRef*> empty;
 
     BSONObjIterator patternIt(keyPattern);
+
     while (patternIt.more()) {
         BSONElement patternEl = patternIt.next();
         parsedPaths.push_back(new FieldRef(patternEl.fieldNameStringData()));
@@ -102,9 +108,9 @@ static vector<FieldRef*> parseShardKeyPattern(const BSONObj& keyPattern) {
                 return empty;
         }
 
-        // Numeric and ascending (1.0), or "hashed" and single field
+        // Numeric and ascending (1.0), "hashed" and single field or "2dsphere" and single field
         if (!patternEl.isNumber()) {
-            if (keyPattern.nFields() != 1 || !isHashedPatternEl(patternEl))
+            if (keyPattern.nFields() != 1 || (!isHashedPatternEl(patternEl) && !is2dSpherePatternEl(patternEl)))
                 return empty;
         } else if (patternEl.numberInt() != 1) {
             return empty;
@@ -128,6 +134,10 @@ bool ShardKeyPattern::isValid() const {
 
 bool ShardKeyPattern::isHashedPattern() const {
     return isHashedPatternEl(_keyPattern.toBSON().firstElement());
+}
+
+bool ShardKeyPattern::is2dSpherePattern() const {
+    return is2dSpherePatternEl(_keyPattern.toBSON().firstElement());
 }
 
 const KeyPattern& ShardKeyPattern::getKeyPattern() const {

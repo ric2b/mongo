@@ -89,6 +89,8 @@ public:
 
     bool isHashedPattern() const;
 
+    bool is2dSpherePattern() const;
+
     const KeyPattern& getKeyPattern() const;
 
     const BSONObj& toBSON() const;
