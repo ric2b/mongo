@@ -62,6 +62,7 @@ env.Library(
         'cluster_reset_error_cmd.cpp',
         'cluster_set_feature_compatibility_version_cmd.cpp',
         'cluster_shard_collection_cmd.cpp',
+        'cluster_shard_geo_collection_cmd.cpp',
         'cluster_shutdown_cmd.cpp',
         'cluster_split_cmd.cpp',
         'cluster_update_zone_key_range_cmd.cpp',

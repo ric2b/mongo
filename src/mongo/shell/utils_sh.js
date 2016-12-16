@@ -116,6 +116,24 @@ sh.shardCollection = function(fullName, key, unique, options) {
     return sh._adminCommand(cmd);
 };
 
+sh.shardGeoCollection = function(fullName, key, unique, options) {
+    sh._checkFullName(fullName);
+    assert(key, "need a key");
+    assert(typeof(key) == "object", "key needs to be an object");
+
+    var cmd = {shardGeoCollection: fullName, key: key};
+    if (unique)
+        cmd.unique = true;
+    if (options) {
+        if (typeof(options) !== "object") {
+            throw new Error("options must be an object");
+        }
+        Object.extend(cmd, options);
+    }
+
+    return sh._adminCommand(cmd);
+};
+
 sh.splitFind = function(fullName, find) {
     sh._checkFullName(fullName);
     return sh._adminCommand({split: fullName, find: find});
