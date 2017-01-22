@@ -455,7 +455,7 @@ public:
             }
         }
 
-        bool isEmpty = (conn->count(nss.ns()) == 0);
+        // bool isEmpty = (conn->count(nss.ns()) == 0);
 
         conn.done();
 
@@ -506,7 +506,7 @@ public:
         return true;
     }
 
-} shardCollectionCmd;
+} shardGeoCollectionCmd;
 
 }  // namespace
 }  // namespace mongo
