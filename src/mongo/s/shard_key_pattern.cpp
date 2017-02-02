@@ -160,6 +160,14 @@ static bool isShardKeyElement(const BSONElement& element, bool allowRegex) {
     return true;
 }
 
+static bool isGeoShardKeyElement(const BSONElement& element, bool allowRegex) {
+    // Unlike 'isShardKeyElement', this forces arrays and forces them to have 2 elements
+    if (element.eoo() || element.type() != Array || element.embeddedObject().nFields() != 2 || (!allowRegex && element.type() == RegEx) ||
+        (element.type() == Object && !element.embeddedObject().okForStorage()))
+        return false;
+    return true;
+}
+
 bool ShardKeyPattern::isShardKey(const BSONObj& shardKey) const {
     // Shard keys are always of the form: { 'nested.path' : value, 'nested.path2' : value }
 
@@ -171,7 +179,7 @@ bool ShardKeyPattern::isShardKey(const BSONObj& shardKey) const {
         BSONElement patternEl = patternIt.next();
 
         BSONElement keyEl = shardKey[patternEl.fieldNameStringData()];
-        if (!isShardKeyElement(keyEl, true))
+        if (!isShardKeyElement(keyEl, true) && !isGeoShardKeyElement(keyEl, true))
             return false;
     }
 
@@ -236,17 +244,26 @@ BSONObj ShardKeyPattern::extractShardKeyFromMatchable(const MatchableDocument& m
         BSONElement matchEl =
             extractKeyElementFromMatchable(matchable, patternEl.fieldNameStringData());
 
-        if (!isShardKeyElement(matchEl, true))
-            return BSONObj();
+        if (is2dSpherePatternEl(patternEl)) {
+            if (!isGeoShardKeyElement(matchEl, true))
+                return BSONObj();
 
-        if (isHashedPatternEl(patternEl)) {
-            keyBuilder.append(
-                patternEl.fieldName(),
-                BSONElementHasher::hash64(matchEl, BSONElementHasher::DEFAULT_HASH_SEED));
-        } else {
-            // NOTE: The matched element may *not* have the same field name as the path -
-            // index keys don't contain field names, for example
+            // Will do something different later
             keyBuilder.appendAs(matchEl, patternEl.fieldName());
+        } else {
+
+            if (!isShardKeyElement(matchEl, true))
+                return BSONObj();
+
+            if (isHashedPatternEl(patternEl)) {
+                keyBuilder.append(
+                    patternEl.fieldName(),
+                    BSONElementHasher::hash64(matchEl, BSONElementHasher::DEFAULT_HASH_SEED));
+            } else {
+                // NOTE: The matched element may *not* have the same field name as the path -
+                // index keys don't contain field names, for example
+                keyBuilder.appendAs(matchEl, patternEl.fieldName());
+            }
         }
     }
 

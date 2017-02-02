@@ -166,3 +166,7 @@ buildinfo.cpp
 DriverInclude.wxs
 
 compile_commands.json
+
+gdb\.txt
+
+src/mongo/cscope\.out

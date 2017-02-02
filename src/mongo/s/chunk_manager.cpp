@@ -502,6 +502,13 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
 
         BSONObj chunkMin;
         shared_ptr<Chunk> chunk;
+
+        if(shardKey.firstElement().type() == mongo::Array) {
+          // is 2dSphere, other keys can't be arrays
+          
+          chunk = findNearestGeoChunk(shardKey);
+        }
+               
         {
             ChunkMap::const_iterator it = _chunkMap.upper_bound(shardKey);
             if (it != _chunkMap.end()) {
@@ -531,6 +538,10 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
                               << _version.toString()
                               << ", number of chunks: "
                               << _chunkMap.size());
+}
+
+shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) const {
+  return NULL;
 }
 
 shared_ptr<Chunk> ChunkManager::findIntersectingChunkWithSimpleCollation(
@@ -651,7 +662,9 @@ IndexBounds ChunkManager::getIndexBoundsForQuery(const BSONObj& key,
 
     // Consider shard key as an index
     string accessMethod = IndexNames::findPluginName(key);
-    dassert(accessMethod == IndexNames::BTREE || accessMethod == IndexNames::HASHED);
+    dassert(accessMethod == IndexNames::BTREE 
+            || accessMethod == IndexNames::GEO_2DSPHERE 
+            || accessMethod == IndexNames::HASHED);
 
     // Use query framework to generate index bounds
     QueryPlannerParams plannerParams;

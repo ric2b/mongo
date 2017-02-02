@@ -136,6 +136,11 @@ public:
                                                              const BSONObj& collation) const;
 
     /*
+     * Finds the intersecting geographic chunk.
+     */
+    std::shared_ptr<Chunk> findNearestGeoChunk(const BSONObj& shardKey) const;
+
+    /*
      * Finds the intersecting chunk, assuming the simple collation.
      */
     std::shared_ptr<Chunk> findIntersectingChunkWithSimpleCollation(OperationContext* txn,
