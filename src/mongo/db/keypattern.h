@@ -65,6 +65,11 @@ public:
     static bool isHashedKeyPattern(const BSONObj& pattern);
 
     /**
+     * Is the provided key pattern a 2dsphere geo sharding key?
+     */
+    static bool isGeoKeyPattern(const BSONObj& pattern);
+
+    /**
      * Constructs a new key pattern based on a BSON document
      */
     KeyPattern(const BSONObj& pattern);

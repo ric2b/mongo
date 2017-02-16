@@ -286,7 +286,7 @@ void ClusterWriter::write(OperationContext* txn,
             exec.executeBatch(txn, *request, response, &_stats);
         }
 
-        if (_autoSplit) {
+        if (_autoSplit) {  // Figure out if it's a GeoCluster?
             splitIfNeeded(txn, request->getNS(), targeterStats);
         }
     }

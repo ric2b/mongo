@@ -463,6 +463,24 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
 
         ChunkType chunk;
         chunk.setNS(_ns);
+
+        //BSONObjBuilder newBound(bound.objsize());
+
+        // {[geometry.coordinates] = "2dsphere"}
+        //newBound.appendMinKey(patElt.fieldName());
+        //newBound.obj();
+
+        //BSONObj keyPattern = fromjson("{'geometry.coordinates': '2dsphere'}");
+        vector<ShardId> shardIds;
+        Grid::get(txn)->shardRegistry()->getAllShardIds(&shardIds);
+
+        min = fromjson("{'geometry.coordinates': {'$longitude': 90}}");
+        max = fromjson("{'geometry.coordinates': {'$latitude': 0}}");
+
+        min.getStringField("_id");
+        //min = BSON("longitude" << 90);
+        //max = BSON("latitude" << 0);
+
         chunk.setMin(min);
         chunk.setMax(max);
         chunk.setShard(shardIds[i % shardIds.size()]);
@@ -504,12 +522,9 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
         shared_ptr<Chunk> chunk;
 
         if(shardKey.firstElement().type() == mongo::Array) {
-          // is 2dSphere, other keys can't be arrays
-          
-          chunk = findNearestGeoChunk(shardKey);
-        }
-               
-        {
+            // is 2dSphere, other keys can't be arrays
+            chunk = findNearestGeoChunk(shardKey);
+        } else {               
             ChunkMap::const_iterator it = _chunkMap.upper_bound(shardKey);
             if (it != _chunkMap.end()) {
                 chunkMin = it->first;
@@ -541,7 +556,9 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
 }
 
 shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) const {
-  return NULL;
+  // For now it simply returns the first chunk it finds
+  // (*(_chunkMap.cbegin())->second)->_shardId
+    return _chunkMap.cbegin()->second;
 }
 
 shared_ptr<Chunk> ChunkManager::findIntersectingChunkWithSimpleCollation(
@@ -587,27 +604,33 @@ void ChunkManager::getShardIdsForQuery(OperationContext* txn,
         }
     }
 
-    // Transforms query into bounds for each field in the shard key
-    // for example :
-    //   Key { a: 1, b: 1 },
-    //   Query { a : { $gte : 1, $lt : 2 },
-    //            b : { $gte : 3, $lt : 4 } }
-    //   => Bounds { a : [1, 2), b : [3, 4) }
-    IndexBounds bounds = getIndexBoundsForQuery(_keyPattern.toBSON(), *cq);
+    if(_keyPattern.toBSON().firstElement().str() == "2dsphere") {
+        // temporary
+        shardIds->insert(_chunkRangeMap.begin()->second.getShardId());
+    } else {
 
-    // Transforms bounds for each shard key field into full shard key ranges
-    // for example :
-    //   Key { a : 1, b : 1 }
-    //   Bounds { a : [1, 2), b : [3, 4) }
-    //   => Ranges { a : 1, b : 3 } => { a : 2, b : 4 }
-    BoundList ranges = _keyPattern.flattenBounds(bounds);
+        // Transforms query into bounds for each field in the shard key
+        // for example :
+        //   Key { a: 1, b: 1 },
+        //   Query { a : { $gte : 1, $lt : 2 },
+        //            b : { $gte : 3, $lt : 4 } }
+        //   => Bounds { a : [1, 2), b : [3, 4) }
+        IndexBounds bounds = getIndexBoundsForQuery(_keyPattern.toBSON(), *cq);
 
-    for (BoundList::const_iterator it = ranges.begin(); it != ranges.end(); ++it) {
-        getShardIdsForRange(*shardIds, it->first /*min*/, it->second /*max*/);
+        // Transforms bounds for each shard key field into full shard key ranges
+        // for example :
+        //   Key { a : 1, b : 1 }
+        //   Bounds { a : [1, 2), b : [3, 4) }
+        //   => Ranges { a : 1, b : 3 } => { a : 2, b : 4 }
+        BoundList ranges = _keyPattern.flattenBounds(bounds);
 
-        // once we know we need to visit all shards no need to keep looping
-        if (shardIds->size() == _shardIds.size())
-            break;
+        for (BoundList::const_iterator it = ranges.begin(); it != ranges.end(); ++it) {
+            getShardIdsForRange(*shardIds, it->first /*min*/, it->second /*max*/);
+
+            // once we know we need to visit all shards no need to keep looping
+            if (shardIds->size() == _shardIds.size())
+                break;
+        }
     }
 
     // SERVER-4914 Some clients of getShardIdsForQuery() assume at least one shard will be returned.

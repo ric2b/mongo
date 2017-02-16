@@ -60,9 +60,14 @@ const char kMaxKey[] = "max";
 
 }  // namespace
 
-ChunkRange::ChunkRange(BSONObj minKey, BSONObj maxKey)
-    : _minKey(std::move(minKey)), _maxKey(std::move(maxKey)) {
-    dassert(SimpleBSONObjComparator::kInstance.evaluate(_minKey < _maxKey));
+ChunkRange::ChunkRange(BSONObj minKey, BSONObj maxKey) : _minKey(std::move(minKey)), _maxKey(std::move(maxKey)) {
+    if(strcmp(_minKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0 
+        && strcmp(_maxKey.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+        // do some checks
+    }
+    else {
+        dassert(SimpleBSONObjComparator::kInstance.evaluate(_minKey < _maxKey));
+    }
 }
 
 StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
@@ -92,7 +97,12 @@ StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
         }
     }
 
-    if (SimpleBSONObjComparator::kInstance.evaluate(minKey.Obj() >= maxKey.Obj())) {
+    if(strcmp(minKey.Obj().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+         && strcmp(maxKey.Obj().firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+        // do some checks here, like possible values
+    }
+
+    else if (SimpleBSONObjComparator::kInstance.evaluate(minKey.Obj() >= maxKey.Obj())) {
         return {ErrorCodes::FailedToParse,
                 str::stream() << "min: " << minKey.Obj() << " should be less than max: "
                               << maxKey.Obj()};

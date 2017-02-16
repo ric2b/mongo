@@ -55,6 +55,10 @@ bool KeyPattern::isHashedKeyPattern(const BSONObj& pattern) {
     return IndexNames::HASHED == IndexNames::findPluginName(pattern);
 }
 
+bool KeyPattern::isGeoKeyPattern(const BSONObj& pattern) {
+    return IndexNames::GEO_2DSPHERE == IndexNames::findPluginName(pattern);
+}
+
 BSONObj KeyPattern::extendRangeBound(const BSONObj& bound, bool makeUpperInclusive) const {
     BSONObjBuilder newBound(bound.objsize());
 
