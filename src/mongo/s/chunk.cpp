@@ -111,7 +111,12 @@ Chunk::Chunk(ChunkManager* info,
       _dataWritten(initialDataWritten) {}
 
 bool Chunk::containsKey(const BSONObj& shardKey) const {
-    return getMin().woCompare(shardKey) <= 0 && shardKey.woCompare(getMax()) < 0;
+    if (shardKey.firstElementType() == mongo::Array) {
+        // do some checks here
+        return true;
+    } else {
+        return getMin().woCompare(shardKey) <= 0 && shardKey.woCompare(getMax()) < 0;    
+    }    
 }
 
 bool Chunk::_minIsInf() const {

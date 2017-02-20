@@ -138,26 +138,33 @@ bool isChunkMapValid(const ChunkMap& chunkMap) {
         return true;
     }
 
-    // Check endpoints
-    ENSURE(allOfType(MinKey, chunkMap.begin()->second->getMin()));
-    ENSURE(allOfType(MaxKey, boost::prior(chunkMap.end())->second->getMax()));
+    if (strcmp(chunkMap.begin()->second->getMin().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+            && strcmp(boost::prior(chunkMap.end())->second->getMax().firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+        // do some checks here
+        return true;
+    } else {
 
-    // Make sure there are no gaps or overlaps
-    for (ChunkMap::const_iterator it = boost::next(chunkMap.begin()), end = chunkMap.end();
-         it != end;
-         ++it) {
-        ChunkMap::const_iterator last = boost::prior(it);
+        // Check endpoints
+        ENSURE(allOfType(MinKey, chunkMap.begin()->second->getMin()));
+        ENSURE(allOfType(MaxKey, boost::prior(chunkMap.end())->second->getMax()));
 
-        if (SimpleBSONObjComparator::kInstance.evaluate(it->second->getMin() !=
-                                                        last->second->getMax())) {
-            log() << last->second->toString();
-            log() << it->second->toString();
-            log() << it->second->getMin();
-            log() << last->second->getMax();
+        // Make sure there are no gaps or overlaps
+        for (ChunkMap::const_iterator it = boost::next(chunkMap.begin()), end = chunkMap.end();
+             it != end;
+             ++it) {
+            ChunkMap::const_iterator last = boost::prior(it);
+
+            if (SimpleBSONObjComparator::kInstance.evaluate(it->second->getMin() !=
+                                                            last->second->getMax())) {
+                log() << last->second->toString();
+                log() << it->second->toString();
+                log() << it->second->getMin();
+                log() << last->second->getMax();
+            }
+
+            ENSURE(SimpleBSONObjComparator::kInstance.evaluate(it->second->getMin() ==
+                                                               last->second->getMax()));
         }
-
-        ENSURE(SimpleBSONObjComparator::kInstance.evaluate(it->second->getMin() ==
-                                                           last->second->getMax()));
     }
 
     return true;
@@ -521,8 +528,12 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
         BSONObj chunkMin;
         shared_ptr<Chunk> chunk;
 
-        if(shardKey.firstElement().type() == mongo::Array) {
+        if(shardKey.firstElement().type() == mongo::Array 
+            || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude")
+            || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude")) {
             // is 2dSphere, other keys can't be arrays
+            // mongo::Array for documents, $longitude/$latitude for chunks
+            // WARNING: THIS IS MASSIVELY UNSAFE, THERE MIGHT NOT BE AN OBJECT INSIDE AN OBJECT            
             chunk = findNearestGeoChunk(shardKey);
         } else {               
             ChunkMap::const_iterator it = _chunkMap.upper_bound(shardKey);
@@ -849,9 +860,14 @@ ChunkManager::ChunkRangeMap ChunkManager::_constructRanges(const ChunkMap& chunk
     }
 
     invariant(!chunkRangeMap.empty());
-    invariant(allOfType(MinKey, chunkRangeMap.begin()->second.getMin()));
-    invariant(allOfType(MaxKey, chunkRangeMap.rbegin()->first));
 
+    if (strcmp(chunkRangeMap.begin()->second.getMin().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+            && strcmp(chunkRangeMap.rbegin()->first.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+        // do some checks here
+    } else {        
+        invariant(allOfType(MinKey, chunkRangeMap.begin()->second.getMin()));
+        invariant(allOfType(MaxKey, chunkRangeMap.rbegin()->first));
+    }
     return chunkRangeMap;
 }
 
