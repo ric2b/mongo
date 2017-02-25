@@ -156,6 +156,12 @@ bool CollectionMetadata::keyBelongsToMe(const BSONObj& key) const {
         return false;
     }
 
+    if (_keyPattern.firstElement().str() == "2dsphere") {
+        // now way to know if the chunk owns the document without knowing all the chunks
+        // assume mongos is doing the right thing, I guess?
+        return true;
+    }
+
     RangeMap::const_iterator it = _rangesMap.upper_bound(key);
     if (it != _rangesMap.begin())
         it--;

@@ -112,7 +112,15 @@ StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
 }
 
 bool ChunkRange::containsKey(const BSONObj& key) const {
-    return _minKey.woCompare(key) <= 0 && key.woCompare(_maxKey) < 0;
+    if (key.firstElement().type() == mongo::Array
+        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$longitude")
+        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$latitude")) {
+        // do some checks
+        // verify distance here?
+        return true;
+    } else {
+        return _minKey.woCompare(key) <= 0 && key.woCompare(_maxKey) < 0;
+    }
 }
 
 void ChunkRange::append(BSONObjBuilder* builder) const {
