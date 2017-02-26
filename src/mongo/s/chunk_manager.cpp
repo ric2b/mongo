@@ -455,54 +455,66 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
 
     vector<BSONObj> splitPoints;
     vector<ShardId> shardIds;
-    calcInitSplitsAndShards(txn, primaryShardId, initPoints, initShardIds, &splitPoints, &shardIds);
 
     // this is the first chunk; start the versioning from scratch
     ChunkVersion version(1, 0, OID::gen());
 
-    log() << "going to create " << splitPoints.size() + 1 << " chunk(s) for: " << _ns
-          << " using new epoch " << version.epoch();
 
-    for (unsigned i = 0; i <= splitPoints.size(); i++) {
-        BSONObj min = i == 0 ? _keyPattern.getKeyPattern().globalMin() : splitPoints[i - 1];
-        BSONObj max =
-            i < splitPoints.size() ? splitPoints[i] : _keyPattern.getKeyPattern().globalMax();
+    if (_keyPattern.is2dSpherePattern()) {
+        log() << "going to create the first Geo chunk for: " << _ns
+              << " using new epoch " << version.epoch();
+
+        // create chunk at the North Pole
+        BSONObj longitude = fromjson("{'geometry.coordinates': {'$longitude': 90}}");
+        BSONObj latitude = fromjson("{'geometry.coordinates': {'$latitude': 0}}");
 
         ChunkType chunk;
         chunk.setNS(_ns);
-
-        //BSONObjBuilder newBound(bound.objsize());
-
-        // {[geometry.coordinates] = "2dsphere"}
-        //newBound.appendMinKey(patElt.fieldName());
-        //newBound.obj();
-
-        //BSONObj keyPattern = fromjson("{'geometry.coordinates': '2dsphere'}");
-        vector<ShardId> shardIds;
-        Grid::get(txn)->shardRegistry()->getAllShardIds(&shardIds);
-
-        min = fromjson("{'geometry.coordinates': {'$longitude': 90}}");
-        max = fromjson("{'geometry.coordinates': {'$latitude': 0}}");
-
-        min.getStringField("_id");
-        //min = BSON("longitude" << 90);
-        //max = BSON("latitude" << 0);
-
-        chunk.setMin(min);
-        chunk.setMax(max);
-        chunk.setShard(shardIds[i % shardIds.size()]);
+        chunk.setMin(longitude);
+        chunk.setMax(latitude);
+        chunk.setShard(primaryShardId);
         chunk.setVersion(version);
 
         Status status = grid.catalogClient(txn)->insertConfigDocument(
             txn, ChunkType::ConfigNS, chunk.toBSON(), ShardingCatalogClient::kMajorityWriteConcern);
         if (!status.isOK()) {
-            const string errMsg = str::stream() << "Creating first chunks failed: "
+            const string errMsg = str::stream() << "Creating first Geo chunk failed: "
                                                 << redact(status.reason());
             error() << errMsg;
             return Status(status.code(), errMsg);
         }
 
         version.incMinor();
+
+    } else {
+        calcInitSplitsAndShards(txn, primaryShardId, initPoints, initShardIds, &splitPoints, &shardIds);
+
+        log() << "going to create " << splitPoints.size() + 1 << " chunk(s) for: " << _ns
+              << " using new epoch " << version.epoch();
+
+        for (unsigned i = 0; i <= splitPoints.size(); i++) {
+            BSONObj min = i == 0 ? _keyPattern.getKeyPattern().globalMin() : splitPoints[i - 1];
+            BSONObj max =
+                i < splitPoints.size() ? splitPoints[i] : _keyPattern.getKeyPattern().globalMax();
+
+            ChunkType chunk;
+            chunk.setNS(_ns);
+            chunk.setMin(min);
+            chunk.setMax(max);
+            chunk.setShard(shardIds[i % shardIds.size()]);
+            chunk.setVersion(version);
+
+            Status status = grid.catalogClient(txn)->insertConfigDocument(
+                txn, ChunkType::ConfigNS, chunk.toBSON(), ShardingCatalogClient::kMajorityWriteConcern);
+            if (!status.isOK()) {
+                const string errMsg = str::stream() << "Creating first chunks failed: "
+                                                    << redact(status.reason());
+                error() << errMsg;
+                return Status(status.code(), errMsg);
+            }
+
+            version.incMinor();
+        }
     }
 
     _version = ChunkVersion(0, 0, version.epoch());
