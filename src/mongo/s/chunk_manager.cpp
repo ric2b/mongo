@@ -486,6 +486,29 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
 
         version.incMinor();
 
+        // create chunk at the South Pole
+        Grid::get(txn)->shardRegistry()->getAllShardIds(&shardIds);
+
+        longitude = fromjson("{'geometry.coordinates': {'$longitude': -90}}");
+        latitude = fromjson("{'geometry.coordinates': {'$latitude': 0}}");
+
+        chunk.setNS(_ns);
+        chunk.setMin(longitude);
+        chunk.setMax(latitude);
+        chunk.setShard(shardIds[0] == primaryShardId ? shardIds[0] : shardIds[1]);
+        chunk.setVersion(version);
+
+        status = grid.catalogClient(txn)->insertConfigDocument(
+            txn, ChunkType::ConfigNS, chunk.toBSON(), ShardingCatalogClient::kMajorityWriteConcern);
+        if (!status.isOK()) {
+            const string errMsg = str::stream() << "Creating first Geo chunk failed: "
+                                                << redact(status.reason());
+            error() << errMsg;
+            return Status(status.code(), errMsg);
+        }
+
+        version.incMinor();
+
     } else {
         calcInitSplitsAndShards(txn, primaryShardId, initPoints, initShardIds, &splitPoints, &shardIds);
 
