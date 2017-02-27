@@ -137,13 +137,13 @@ bool isChunkMapValid(const ChunkMap& chunkMap) {
     if (chunkMap.empty()) {
         return true;
     }
-
+/*
     if (strcmp(chunkMap.begin()->second->getMin().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
             && strcmp(boost::prior(chunkMap.end())->second->getMax().firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
         // do some checks here
         return true;
     } else {
-
+*/
         // Check endpoints
         ENSURE(allOfType(MinKey, chunkMap.begin()->second->getMin()));
         ENSURE(allOfType(MaxKey, boost::prior(chunkMap.end())->second->getMax()));
@@ -165,7 +165,7 @@ bool isChunkMapValid(const ChunkMap& chunkMap) {
             ENSURE(SimpleBSONObjComparator::kInstance.evaluate(it->second->getMin() ==
                                                                last->second->getMax()));
         }
-    }
+  //  }
 
     return true;
 
@@ -562,7 +562,7 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
 
         BSONObj chunkMin;
         shared_ptr<Chunk> chunk;
-
+/*
         if(shardKey.firstElement().type() == mongo::Array 
             || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
             || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
@@ -571,12 +571,12 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
             // WARNING: THIS IS MASSIVELY UNSAFE, THERE MIGHT NOT BE AN OBJECT INSIDE AN OBJECT            
             chunk = findNearestGeoChunk(shardKey);
         } else {               
-            ChunkMap::const_iterator it = _chunkMap.upper_bound(shardKey);
+  */          ChunkMap::const_iterator it = _chunkMap.upper_bound(shardKey);
             if (it != _chunkMap.end()) {
                 chunkMin = it->first;
                 chunk = it->second;
             }
-        }
+    //    }
 
         if (chunk) {
             if (chunk->containsKey(shardKey)) {
@@ -899,14 +899,14 @@ ChunkManager::ChunkRangeMap ChunkManager::_constructRanges(const ChunkMap& chunk
     }
 
     invariant(!chunkRangeMap.empty());
-
+/*
     if (strcmp(chunkRangeMap.begin()->second.getMin().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
             && strcmp(chunkRangeMap.rbegin()->first.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
         // do some checks here
-    } else {        
+    } else {        */
         invariant(allOfType(MinKey, chunkRangeMap.begin()->second.getMin()));
         invariant(allOfType(MaxKey, chunkRangeMap.rbegin()->first));
-    }
+    //}
     return chunkRangeMap;
 }
 

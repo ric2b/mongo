@@ -111,15 +111,15 @@ Chunk::Chunk(ChunkManager* info,
       _dataWritten(initialDataWritten) {}
 
 bool Chunk::containsKey(const BSONObj& shardKey) const {
-    if (shardKey.firstElementType() == mongo::Array
-        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
-        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+    /*if (shardKey.firstElementType() == mongo::Array
+        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude")
+        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude")) {
         // do some checks here
         // verify distance here?
         return true;
     } else {
-        return getMin().woCompare(shardKey) <= 0 && shardKey.woCompare(getMax()) < 0;    
-    }    
+    */    return getMin().woCompare(shardKey) <= 0 && shardKey.woCompare(getMax()) < 0;    
+    //}    
 }
 
 bool Chunk::_minIsInf() const {

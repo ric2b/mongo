@@ -61,13 +61,14 @@ const char kMaxKey[] = "max";
 }  // namespace
 
 ChunkRange::ChunkRange(BSONObj minKey, BSONObj maxKey) : _minKey(std::move(minKey)), _maxKey(std::move(maxKey)) {
-    if(strcmp(_minKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0 
+    dassert(SimpleBSONObjComparator::kInstance.evaluate(_minKey < _maxKey));
+    /*if(strcmp(_minKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0 
         && strcmp(_maxKey.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
         // do some checks
     }
     else {
-        dassert(SimpleBSONObjComparator::kInstance.evaluate(_minKey < _maxKey));
-    }
+        
+    }*/
 }
 
 StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
@@ -96,13 +97,13 @@ StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
             return {ErrorCodes::BadValue, "The max key cannot be empty"};
         }
     }
-
+/*
     if(strcmp(minKey.Obj().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
          && strcmp(maxKey.Obj().firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
         // do some checks here, like possible values
     }
 
-    else if (SimpleBSONObjComparator::kInstance.evaluate(minKey.Obj() >= maxKey.Obj())) {
+    else*/ if (SimpleBSONObjComparator::kInstance.evaluate(minKey.Obj() >= maxKey.Obj())) {
         return {ErrorCodes::FailedToParse,
                 str::stream() << "min: " << minKey.Obj() << " should be less than max: "
                               << maxKey.Obj()};
@@ -112,15 +113,15 @@ StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
 }
 
 bool ChunkRange::containsKey(const BSONObj& key) const {
-    if (key.firstElement().type() == mongo::Array
-        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
-        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+    /*if (key.firstElement().type() == mongo::Array
+        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$longitude")
+        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$latitude")) {
         // do some checks
         // verify distance here?
         return true;
-    } else {
+    } else {*/
         return _minKey.woCompare(key) <= 0 && key.woCompare(_maxKey) < 0;
-    }
+    //}
 }
 
 void ChunkRange::append(BSONObjBuilder* builder) const {
