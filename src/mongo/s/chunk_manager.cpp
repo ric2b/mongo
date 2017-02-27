@@ -495,7 +495,7 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
         chunk.setNS(_ns);
         chunk.setMin(longitude);
         chunk.setMax(latitude);
-        chunk.setShard(shardIds[0] == primaryShardId ? shardIds[0] : shardIds[1]);
+        chunk.setShard(shardIds[0] == primaryShardId ? shardIds[1] : shardIds[0]);  // We don't want the primary
         chunk.setVersion(version);
 
         status = grid.catalogClient(txn)->insertConfigDocument(
@@ -604,6 +604,10 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
 shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) const {
   // For now it simply returns the first chunk it finds
   // (*(_chunkMap.cbegin())->second)->_shardId
+    //for (ChunkMap::const_iterator i = _chunkMap.begin(); i != _chunkMap.end(); ++i) {
+        //sb << "\t" << i->second->toString() << '\n';
+    //}
+
     return _chunkMap.cbegin()->second;
 }
 
