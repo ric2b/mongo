@@ -112,8 +112,8 @@ Chunk::Chunk(ChunkManager* info,
 
 bool Chunk::containsKey(const BSONObj& shardKey) const {
     if (shardKey.firstElementType() == mongo::Array
-        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude")
-        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude")) {
+        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+        || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
         // do some checks here
         // verify distance here?
         return true;
@@ -336,6 +336,11 @@ bool Chunk::splitIfShould(OperationContext* txn, long dataWritten) {
     const uint64_t chunkBytesWritten = getBytesWritten();
 
     try {
+        if (strcmp(_min.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+            || strcmp(_min.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+            return false;
+        }
+
         uint64_t splitThreshold = _manager->getCurrentDesiredChunkSize();
 
         if (_minIsInf() || _maxIsInf()) {

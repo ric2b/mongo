@@ -113,8 +113,8 @@ StatusWith<ChunkRange> ChunkRange::fromBSON(const BSONObj& obj) {
 
 bool ChunkRange::containsKey(const BSONObj& key) const {
     if (key.firstElement().type() == mongo::Array
-        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$longitude")
-        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$latitude")) {
+        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+        || strcmp(key.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
         // do some checks
         // verify distance here?
         return true;

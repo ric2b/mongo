@@ -564,8 +564,8 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
         shared_ptr<Chunk> chunk;
 
         if(shardKey.firstElement().type() == mongo::Array 
-            || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude")
-            || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude")) {
+            || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+            || strcmp(shardKey.firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
             // is 2dSphere, other keys can't be arrays
             // mongo::Array for documents, $longitude/$latitude for chunks
             // WARNING: THIS IS MASSIVELY UNSAFE, THERE MIGHT NOT BE AN OBJECT INSIDE AN OBJECT            
