@@ -468,14 +468,19 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
         log() << "going to create the first Geo chunk for: " << _ns
               << " using new epoch " << version.epoch();
 
+        BSONField<double> longitude("$longitude");
+        BSONField<double> latitude("$latitude");
+
+        auto shardKeyPattern = _keyPattern.getKeyPattern().toBSON().firstElementFieldName();
+
         // create chunk at the North Pole
-        BSONObj longitude = fromjson("{'geometry.coordinates': {'$longitude': 90}}");
-        BSONObj latitude = fromjson("{'geometry.coordinates': {'$latitude': 0}}");
+        BSONObj chunkLongitude = BSON(shardKeyPattern << BSON(longitude << 90.));
+        BSONObj chunkLatitude = BSON(shardKeyPattern << BSON(latitude << 0.));
 
         ChunkType chunk;
         chunk.setNS(_ns);
-        chunk.setMin(longitude);
-        chunk.setMax(latitude);
+        chunk.setMin(chunkLongitude);
+        chunk.setMax(chunkLatitude);
         chunk.setShard(primaryShardId);
         chunk.setVersion(version);
 
@@ -493,12 +498,12 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
         // create chunk at the South Pole
         Grid::get(txn)->shardRegistry()->getAllShardIds(&shardIds);
 
-        longitude = fromjson("{'geometry.coordinates': {'$longitude': -90}}");
-        latitude = fromjson("{'geometry.coordinates': {'$latitude': 0}}");
+        chunkLongitude = BSON(shardKeyPattern << BSON(longitude << -90.));
+        chunkLatitude = BSON(shardKeyPattern << BSON(latitude << 0.));
 
         chunk.setNS(_ns);
-        chunk.setMin(longitude);
-        chunk.setMax(latitude);
+        chunk.setMin(chunkLongitude);
+        chunk.setMax(chunkLatitude);
         chunk.setShard(shardIds[0] == primaryShardId ? shardIds[1] : shardIds[0]);  // We don't want the primary
         chunk.setVersion(version);
 
@@ -605,14 +610,40 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
                               << _chunkMap.size());
 }
 
+double ChunkManager::geoDistance(double longitude_chunk, double latitude_chunk, 
+                                 double longitude_point, double latitude_point) const {
+    // This should probably be moved to be a chunk method but I'm on a tight schedule
+    if ((longitude_chunk >= 0 && longitude_point >= 0) || (longitude_chunk < 0 && longitude_point < 0)) {
+        return 1.; // closer if it's in the same hemisphere
+    } else {
+        return 2.;
+    }    
+}
+
 shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) const {
   // For now it simply returns the first chunk it finds
   // (*(_chunkMap.cbegin())->second)->_shardId
-    //for (ChunkMap::const_iterator i = _chunkMap.begin(); i != _chunkMap.end(); ++i) {
-        //sb << "\t" << i->second->toString() << '\n';
-    //}
+    shared_ptr<Chunk> closestChunk;
+    double minDistance = -1;
 
-    return _chunkMap.cbegin()->second;
+    for (ChunkMap::const_iterator i = _chunkMap.begin(); i != _chunkMap.end(); ++i) {
+        shared_ptr<Chunk> current_chunk = i->second;
+
+        double longitude_chunk = current_chunk->getMin().firstElement().Obj().firstElement().Double();
+        double latitude_chunk = current_chunk->getMax().firstElement().Obj().firstElement().Double();
+
+        double longitude_point = shardKey.firstElement().Array()[0].Double();
+        double latitude_point = shardKey.firstElement().Array()[1].Double();
+
+        double distance = geoDistance(longitude_chunk, latitude_chunk, longitude_point, latitude_point);
+        
+        if (minDistance == -1 || distance < minDistance) {
+            closestChunk = current_chunk;
+            minDistance = geoDistance(longitude_chunk, latitude_chunk, longitude_point, latitude_point);
+        }
+    }
+
+    return closestChunk;
 }
 
 shared_ptr<Chunk> ChunkManager::findIntersectingChunkWithSimpleCollation(
@@ -658,8 +689,9 @@ void ChunkManager::getShardIdsForQuery(OperationContext* txn,
         }
     }
 
-    if(_keyPattern.toBSON().firstElement().str() == "2dsphere") {
+    if (_keyPattern.is2dSpherePattern()) {
         // temporary
+
         shardIds->insert(_chunkMap.cbegin()->second->getShardId());
     } else {
 

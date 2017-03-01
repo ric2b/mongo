@@ -136,6 +136,12 @@ public:
                                                              const BSONObj& collation) const;
 
     /*
+     * Calculates the distance between 2 different points in a 2dsphere space
+     */
+    double geoDistance(double longitude_chunk, double latitude_chunk, 
+                       double longitude_point, double latitude_point) const;
+
+    /*
      * Finds the intersecting geographic chunk.
      */
     std::shared_ptr<Chunk> findNearestGeoChunk(const BSONObj& shardKey) const;

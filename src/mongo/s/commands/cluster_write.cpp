@@ -140,6 +140,11 @@ void splitIfNeeded(OperationContext* txn, const NamespaceString& nss, const Targ
         return;
     }
 
+    if (chunkManager->getShardKeyPattern().is2dSpherePattern()) {
+        // no splits of geo chunks
+        return;
+    }
+
     for (auto it = stats.chunkSizeDelta.cbegin(); it != stats.chunkSizeDelta.cend(); ++it) {
         shared_ptr<Chunk> chunk;
         try {
