@@ -103,7 +103,9 @@ public:
     pair<BSONObj, shared_ptr<Chunk>> rangeFor(OperationContext* txn,
                                               const ChunkType& chunk) const final {
         shared_ptr<Chunk> c(new Chunk(txn, _manager, chunk));
-        return make_pair(chunk.getMax(), c);
+        // Maybe change this only on geo shards?
+        return make_pair(BSON("min" << chunk.getMin() << "max" << chunk.getMax()), c);
+        //return make_pair(chunk.getMax(), c);
     }
 
     ShardId shardFor(OperationContext* txn, const ShardId& shardId) const final {
@@ -286,7 +288,9 @@ bool ChunkManager::_load(OperationContext* txn,
                                              oldC->getLastmod(),
                                              oldC->getBytesWritten()));
 
-            chunkMap.insert(make_pair(oldC->getMax(), newC));
+            // Maybe do this only on geo shards?
+            chunkMap.insert(make_pair(BSON("min" << oldC->getMin() << "max" << oldC->getMax()), newC));
+            //chunkMap.insert(make_pair(oldC->getMax(), newC));
         }
 
         LOG(2) << "loading chunk manager for collection " << _ns
@@ -656,7 +660,7 @@ void ChunkManager::getShardIdsForQuery(OperationContext* txn,
 
     if(_keyPattern.toBSON().firstElement().str() == "2dsphere") {
         // temporary
-        shardIds->insert(_chunkRangeMap.begin()->second.getShardId());
+        shardIds->insert(_chunkMap.cbegin()->second->getShardId());
     } else {
 
         // Transforms query into bounds for each field in the shard key
@@ -871,6 +875,11 @@ ChunkManager::ChunkRangeMap ChunkManager::_constructRanges(const ChunkMap& chunk
         SimpleBSONObjComparator::kInstance.makeBSONObjIndexedMap<ShardAndChunkRange>();
 
     if (chunkMap.empty()) {
+        return chunkRangeMap;
+    }
+
+    if (chunkMap.cbegin()->second->getManager()->getShardKeyPattern().is2dSpherePattern()) {
+        //2dSphere doesn't use a RangeMap, so ignore it
         return chunkRangeMap;
     }
 
