@@ -690,9 +690,20 @@ void ChunkManager::getShardIdsForQuery(OperationContext* txn,
     }
 
     if (_keyPattern.is2dSpherePattern()) {
-        // temporary
+        if (cq->getQueryObj().firstElement().Obj().getField("type").String() != "Point") {
+            // Non-point data not supported
+            return;
+        }
 
-        shardIds->insert(_chunkMap.cbegin()->second->getShardId());
+        BSONObj coordinates = cq->getQueryObj().firstElement().Obj().getField("coordinates").Obj();
+
+        double longitude = coordinates.getField("0").Double();
+        double latitude = coordinates.getField("1").Double();
+
+        // Construct a ShardKey BSONObj()  
+        BSONObj shardKey = BSON(_keyPattern.getKeyPattern().toBSON().firstElementFieldName() << BSON_ARRAY(longitude << latitude));
+        shardIds->insert(findNearestGeoChunk(shardKey)->getShardId());
+        //shardIds->insert(_chunkMap.cbegin()->second->getShardId());
     } else {
 
         // Transforms query into bounds for each field in the shard key
