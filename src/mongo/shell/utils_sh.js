@@ -134,6 +134,28 @@ sh.shardGeoCollection = function(fullName, key, unique, options) {
     return sh._adminCommand(cmd);
 };
 
+sh.createGeoChunk = function(shardName, longitude, latitude, options) { 
+    // TODO: make extra checks on the ranges of long and lat
+    assert(shardName, "need shardName");
+    assert(typeof(shardName) == "string", "shardName must be a string"); 
+    
+    assert(typeof(longitude) == "number", "longitude must be a number (degrees)");
+    assert(longitude <= 90 && longitude >= -90, "longitude must be between -90 and 90"); 
+    
+    assert(typeof(latitude) == "number", "latitude must be a number (degrees)"); 
+    assert(latitude <= 180 && latitude >= -180, "latitude must be a between -180 and 180"); 
+ 
+    var cmd = {createGeoChunk: shardName, longitude: longitude, latitude: latitude}; 
+    if (options) { 
+        if (typeof(options) !== "object") { 
+            throw new Error("options must be an object"); 
+        } 
+        Object.extend(cmd, options); 
+    } 
+
+    return sh._adminCommand(cmd);
+}; 
+
 sh.splitFind = function(fullName, find) {
     sh._checkFullName(fullName);
     return sh._adminCommand({split: fullName, find: find});
