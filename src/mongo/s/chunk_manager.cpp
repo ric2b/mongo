@@ -35,6 +35,7 @@
 #include <iterator>
 #include <map>
 #include <set>
+#include <math.h> // to get M_PIl
 
 #include "mongo/bson/simple_bsonobj_comparator.h"
 #include "mongo/bson/util/bson_extract.h"
@@ -610,36 +611,68 @@ StatusWith<shared_ptr<Chunk>> ChunkManager::findIntersectingChunk(OperationConte
                               << _chunkMap.size());
 }
 
-double ChunkManager::geoDistance(double longitude_chunk, double latitude_chunk, 
-                                 double longitude_point, double latitude_point) const {
+double ChunkManager::geoDistance(double longitudeChunk, double latitudeChunk, 
+                                 double longitudePoint, double latitudePoint) const {
     // This should probably be moved to be a chunk method but I'm on a tight schedule
-    if ((longitude_chunk >= 0 && longitude_point >= 0) || (longitude_chunk < 0 && longitude_point < 0)) {
-        return 1.; // closer if it's in the same hemisphere
-    } else {
-        return 2.;
-    }    
+
+    // Using Vincenti's formula assuming  equal major and minor axes, for excelent computational precision
+    // More info: https://en.wikipedia.org/wiki/Vincenty's_formulae
+    // and https://en.wikipedia.org/wiki/Great-circle_distance
+    // Reference implementation: https://gist.github.com/ed-flanagan/e6dc6b8d3383ef5a354a
+
+    // Using fassert because this should be checked for earlier, when creating chunks
+    fassert(40354, longitudeChunk <= 90. && longitudeChunk >= -90.);
+    fassert(40355, latitudeChunk <= 180. && latitudeChunk >= -180.);
+    // While this may be user error?...
+    fassert(40356, longitudePoint <= 90. && longitudePoint >= -90.);
+    fassert(40357, latitudePoint <= 180. && latitudePoint >= -180.);
+
+    double latChunkRadian = latitudeChunk * M_PIl/180.;
+    double lonChunkRadian = longitudeChunk * M_PIl/180.;
+    double latPointRadian = latitudePoint * M_PIl/180.;
+    double lonPointRadian = longitudePoint * M_PIl/180.;
+
+    double d_lon = fabs(lonChunkRadian - lonPointRadian);
+
+    // Numerator
+    double a = pow(cos(latPointRadian) * sin(d_lon), 2);
+    double b = cos(latChunkRadian) * sin(latPointRadian);
+    double c = sin(latChunkRadian) * cos(latPointRadian) * cos(d_lon);
+    double d = pow(b - c, 2);
+    double e = sqrt(a + d);
+
+    // Denominator
+    double f = sin(latChunkRadian) * sin(latPointRadian);
+    double g = cos(latChunkRadian) * cos(latPointRadian) * cos(d_lon);
+    double h = f + g;
+
+    double d_sigma = atan2(e, h);  // arc length distance
+
+    return d_sigma;
 }
 
 shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) const {
-  // For now it simply returns the first chunk it finds
-  // (*(_chunkMap.cbegin())->second)->_shardId
+
     shared_ptr<Chunk> closestChunk;
     double minDistance = -1;
 
     for (ChunkMap::const_iterator i = _chunkMap.begin(); i != _chunkMap.end(); ++i) {
-        shared_ptr<Chunk> current_chunk = i->second;
+        shared_ptr<Chunk> currentChunk = i->second;
 
-        double longitude_chunk = current_chunk->getMin().firstElement().Obj().firstElement().Double();
-        double latitude_chunk = current_chunk->getMax().firstElement().Obj().firstElement().Double();
+        double longitudeChunk = currentChunk->getMin().firstElement().Obj().firstElement().Double();
+        double latitudeChunk = currentChunk->getMax().firstElement().Obj().firstElement().Double();
 
-        double longitude_point = shardKey.firstElement().Array()[0].Double();
-        double latitude_point = shardKey.firstElement().Array()[1].Double();
+        double longitudePoint = shardKey.firstElement().Array()[0].Double();
+        double latitudePoint = shardKey.firstElement().Array()[1].Double();
 
-        double distance = geoDistance(longitude_chunk, latitude_chunk, longitude_point, latitude_point);
+        double distance = geoDistance(longitudeChunk, latitudeChunk, longitudePoint, latitudePoint);
         
-        if (minDistance == -1 || distance < minDistance) {
-            closestChunk = current_chunk;
-            minDistance = geoDistance(longitude_chunk, latitude_chunk, longitude_point, latitude_point);
+        if (minDistance == -1 || distance <= minDistance) {
+            if (distance != minDistance || currentChunk->getLastmod() < closestChunk->getLastmod()) {
+                // In case there's a tie, the tiebreaked is the chunk's version (~age, older gets chosen)
+                closestChunk = currentChunk;
+                minDistance = distance;
+            }
         }
     }
 
