@@ -25,6 +25,7 @@ env.Library(
         'cluster_commands_common.cpp',
         'cluster_control_balancer_cmd.cpp',
         'cluster_count_cmd.cpp',
+        'cluster_create_geo_chunk_cmd.cpp',
         'cluster_current_op.cpp',
         'cluster_db_stats_cmd.cpp',
         'cluster_drop_database_cmd.cpp',
