@@ -145,18 +145,22 @@ public:
             return false;
         }
         
-        bool shardExists = false;
 
         vector<ShardId> shardIds;
         grid.shardRegistry()->getAllShardIds(&shardIds);
 
+        bool foundShard = false;
+        ShardId shardId;
+
         for (std::vector<ShardId>::const_iterator it = shardIds.begin(); it != shardIds.end(); it++) {
             if (it->toString() == shardName) {
-                shardExists = true;
+                shardId = *it;
+                foundShard = true;
+                break;
             }
         }
 
-        if (!shardExists) {
+        if (!foundShard) {
             errmsg = "the given shard name wasn't found";
             return false;
         }
@@ -164,11 +168,14 @@ public:
         LOG(0) << "CMD: createGeoChunk: " << cmdObj;
         
         // Make sure the cached metadata for the collection knows that we are now sharded
-        //config = uassertStatusOK(grid.catalogCache()->getDatabase(txn, nss.db().toString()));
-        //config->getChunkManager(txn, nss.ns(), true /* force */);
+        config = uassertStatusOK(grid.catalogCache()->getDatabase(txn, nss.db().toString()));
+        std::shared_ptr<ChunkManager> ChunkManager = config->getChunkManager(txn, nss.ns(), true /* force */);
+
+        //ChunkVersion version = ChunkManager->getVersion(shardId);
+        ChunkManager->createGeoChunk(txn, shardId, longitude, latitude);
 
         //result << "collectionsharded" << nss.ns();
-        result << "Not implemented yet";
+        result << "Try it!";
 
         return true;
     }

@@ -87,7 +87,7 @@ public:
         return _sequenceNumber;
     }
 
-    Status createGeoChunk(OperationContext* txn, ChunkVersion& version, const ShardId& shardId, 
+    Status createGeoChunk(OperationContext* txn, const ShardId& shardId, 
                           const double chunkLongitude, const double chunkLatitude);
 
     //

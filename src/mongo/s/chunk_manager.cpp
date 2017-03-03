@@ -450,9 +450,10 @@ void ChunkManager::calcInitSplitsAndShards(OperationContext* txn,
     }
 }
 
-Status ChunkManager::createGeoChunk(OperationContext* txn, ChunkVersion& version, const ShardId& shardId,
+Status ChunkManager::createGeoChunk(OperationContext* txn, const ShardId& shardId,
                                     const double chunkLongitude, const double chunkLatitude) {
         // TODO: Verify shard exists and longitude and latitude are valid
+        ChunkVersion version = getVersion(shardId).isSet() ? getVersion(shardId) : ChunkVersion(1, 0, OID::gen());
 
         BSONField<double> longitude("$longitude");
         BSONField<double> latitude("$latitude");
@@ -502,12 +503,12 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
               << " using new epoch " << version.epoch();
 
         // create chunk at the North Pole
-        createGeoChunk(txn, version, primaryShardId, 90., 0.);
+        createGeoChunk(txn, primaryShardId, 90., 0.);
 
         // create chunk at the South Pole
         Grid::get(txn)->shardRegistry()->getAllShardIds(&shardIds);
 
-        createGeoChunk(txn, version, shardIds[0] == primaryShardId ? shardIds[1] : shardIds[0], -90., 0.);
+        createGeoChunk(txn, shardIds[0] == primaryShardId ? shardIds[1] : shardIds[0], -90., 0.);
 
     } else {
         calcInitSplitsAndShards(txn, primaryShardId, initPoints, initShardIds, &splitPoints, &shardIds);
@@ -537,10 +538,10 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
             }
 
             version.incMinor();
-        }
-    }
+        }       
+    }    
 
-    _version = ChunkVersion(0, 0, version.epoch());
+     _version = ChunkVersion(0, 0, version.epoch());
 
     return Status::OK();
 }
