@@ -87,6 +87,9 @@ public:
         return _sequenceNumber;
     }
 
+    Status createGeoChunk(OperationContext* txn, ChunkVersion& version, const ShardId& shardId, 
+                          const double chunkLongitude, const double chunkLatitude);
+
     //
     // After constructor is invoked, we need to call loadExistingRanges.  If this is a new
     // sharded collection, we can call createFirstChunks first.

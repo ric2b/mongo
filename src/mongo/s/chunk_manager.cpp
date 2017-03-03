@@ -450,6 +450,39 @@ void ChunkManager::calcInitSplitsAndShards(OperationContext* txn,
     }
 }
 
+Status ChunkManager::createGeoChunk(OperationContext* txn, ChunkVersion& version, const ShardId& shardId,
+                                    const double chunkLongitude, const double chunkLatitude) {
+        // TODO: Verify shard exists and longitude and latitude are valid
+
+        BSONField<double> longitude("$longitude");
+        BSONField<double> latitude("$latitude");
+
+        auto shardKeyPattern = _keyPattern.getKeyPattern().toBSON().firstElementFieldName();
+
+        BSONObj chunkLongitudeObj = BSON(shardKeyPattern << BSON(longitude << chunkLongitude));
+        BSONObj chunkLatitudeObj = BSON(shardKeyPattern << BSON(latitude << chunkLatitude));
+
+        ChunkType chunk;
+        chunk.setNS(_ns);
+        chunk.setMin(chunkLongitudeObj);
+        chunk.setMax(chunkLatitudeObj);
+        chunk.setShard(shardId);
+        chunk.setVersion(version);
+
+        Status status = grid.catalogClient(txn)->insertConfigDocument(
+            txn, ChunkType::ConfigNS, chunk.toBSON(), ShardingCatalogClient::kMajorityWriteConcern);
+        if (!status.isOK()) {
+            const string errMsg = str::stream() << "Creating Geo chunk failed: "
+                                                << redact(status.reason());
+            error() << errMsg;
+            return Status(status.code(), errMsg);
+        }
+
+        version.incMinor();
+
+        return Status::OK();
+}
+
 Status ChunkManager::createFirstChunks(OperationContext* txn,
                                        const ShardId& primaryShardId,
                                        const vector<BSONObj>* initPoints,
@@ -464,60 +497,17 @@ Status ChunkManager::createFirstChunks(OperationContext* txn,
     // this is the first chunk; start the versioning from scratch
     ChunkVersion version(1, 0, OID::gen());
 
-
     if (_keyPattern.is2dSpherePattern()) {
         log() << "going to create the first Geo chunk for: " << _ns
               << " using new epoch " << version.epoch();
 
-        BSONField<double> longitude("$longitude");
-        BSONField<double> latitude("$latitude");
-
-        auto shardKeyPattern = _keyPattern.getKeyPattern().toBSON().firstElementFieldName();
-
         // create chunk at the North Pole
-        BSONObj chunkLongitude = BSON(shardKeyPattern << BSON(longitude << 90.));
-        BSONObj chunkLatitude = BSON(shardKeyPattern << BSON(latitude << 0.));
-
-        ChunkType chunk;
-        chunk.setNS(_ns);
-        chunk.setMin(chunkLongitude);
-        chunk.setMax(chunkLatitude);
-        chunk.setShard(primaryShardId);
-        chunk.setVersion(version);
-
-        Status status = grid.catalogClient(txn)->insertConfigDocument(
-            txn, ChunkType::ConfigNS, chunk.toBSON(), ShardingCatalogClient::kMajorityWriteConcern);
-        if (!status.isOK()) {
-            const string errMsg = str::stream() << "Creating first Geo chunk failed: "
-                                                << redact(status.reason());
-            error() << errMsg;
-            return Status(status.code(), errMsg);
-        }
-
-        version.incMinor();
+        createGeoChunk(txn, version, primaryShardId, 90., 0.);
 
         // create chunk at the South Pole
         Grid::get(txn)->shardRegistry()->getAllShardIds(&shardIds);
 
-        chunkLongitude = BSON(shardKeyPattern << BSON(longitude << -90.));
-        chunkLatitude = BSON(shardKeyPattern << BSON(latitude << 0.));
-
-        chunk.setNS(_ns);
-        chunk.setMin(chunkLongitude);
-        chunk.setMax(chunkLatitude);
-        chunk.setShard(shardIds[0] == primaryShardId ? shardIds[1] : shardIds[0]);  // We don't want the primary
-        chunk.setVersion(version);
-
-        status = grid.catalogClient(txn)->insertConfigDocument(
-            txn, ChunkType::ConfigNS, chunk.toBSON(), ShardingCatalogClient::kMajorityWriteConcern);
-        if (!status.isOK()) {
-            const string errMsg = str::stream() << "Creating first Geo chunk failed: "
-                                                << redact(status.reason());
-            error() << errMsg;
-            return Status(status.code(), errMsg);
-        }
-
-        version.incMinor();
+        createGeoChunk(txn, version, shardIds[0] == primaryShardId ? shardIds[1] : shardIds[0], -90., 0.);
 
     } else {
         calcInitSplitsAndShards(txn, primaryShardId, initPoints, initShardIds, &splitPoints, &shardIds);
