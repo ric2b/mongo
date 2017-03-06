@@ -88,7 +88,8 @@ public:
     }
 
     Status createGeoChunk(OperationContext* txn, const ShardId& shardId, 
-                          const double chunkLongitude, const double chunkLatitude);
+                          const double chunkLongitude, const double chunkLatitude, 
+                          ChunkVersion* forcedVersion);
 
     //
     // After constructor is invoked, we need to call loadExistingRanges.  If this is a new

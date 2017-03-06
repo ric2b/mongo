@@ -169,10 +169,14 @@ public:
         
         // Make sure the cached metadata for the collection knows that we are now sharded
         config = uassertStatusOK(grid.catalogCache()->getDatabase(txn, nss.db().toString()));
-        std::shared_ptr<ChunkManager> ChunkManager = config->getChunkManager(txn, nss.ns(), true /* force */);
+        std::shared_ptr<ChunkManager> chunkManager = config->getChunkManager(txn, nss.ns(), true /* force */);
 
         //ChunkVersion version = ChunkManager->getVersion(shardId);
-        ChunkManager->createGeoChunk(txn, shardId, longitude, latitude);
+        chunkManager->createGeoChunk(txn, shardId, longitude, latitude, NULL);
+
+        // Proactively refresh the chunk manager. Not really necessary, but this way it's
+        // immediately up-to-date the next time it's used.
+        chunkManager->reload(txn);
 
         //result << "collectionsharded" << nss.ns();
         result << "Try it!";
