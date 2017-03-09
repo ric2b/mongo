@@ -159,7 +159,10 @@ int ConfigDiffTracker<ValType>::calculateConfigDiff(OperationContext* txn,
         //
         // TODO: This checks for overlap, we also should check for holes here iff we're
         // tracking all chunks.
-        if (_isOverlapping(chunk.getMin(), chunk.getMax())) {
+        if (strcmp(chunk.getMin().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+            && strcmp(chunk.getMax().firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+            // Geo chunk. Do we want to check for something here?
+        } else if (_isOverlapping(chunk.getMin(), chunk.getMax())) {
             return -1;
         }
 

@@ -260,7 +260,16 @@ Status MigrationManager::executeManualMigration(
     auto scopedCM = std::move(scopedCMStatus.getValue());
     ChunkManager* const cm = scopedCM.cm();
 
-    auto chunk = cm->findIntersectingChunkWithSimpleCollation(txn, migrateInfo.minKey);
+    // Geo chunks can't be identified only by minKey, so need an alternative code path here
+
+    shared_ptr<Chunk> chunk;
+    if (cm->getShardKeyPattern().is2dSpherePattern()) {
+        // alternate code path for Geo Chunks, need both keys to identify
+        chunk = cm->getGeoChunk(migrateInfo.minKey, migrateInfo.maxKey);    
+    } else {
+        chunk = cm->findIntersectingChunkWithSimpleCollation(txn, migrateInfo.minKey);
+    }
+
     invariant(chunk);
 
     Status commandStatus = _processRemoteCommandResponse(
@@ -417,7 +426,14 @@ void MigrationManager::finishRecovery(OperationContext* txn,
             auto waitForDelete = migrationType.getWaitForDelete();
             migrateInfos.pop_front();
 
-            auto chunk = cm->findIntersectingChunkWithSimpleCollation(txn, migrationInfo.minKey);
+            shared_ptr<Chunk> chunk;
+            if (cm->getShardKeyPattern().is2dSpherePattern()) {
+                // alternate code path for Geo Chunks, need both keys to identify
+                chunk = cm->getGeoChunk(migrationInfo.minKey, migrationInfo.maxKey);    
+            } else {
+                chunk = cm->findIntersectingChunkWithSimpleCollation(txn, migrationInfo.minKey);    
+            }
+            
             invariant(chunk);
 
             if (chunk->getShardId() != migrationInfo.from) {
@@ -537,7 +553,14 @@ shared_ptr<Notification<RemoteCommandResponse>> MigrationManager::_schedule(
 
     ChunkManager* const chunkManager = statusWithScopedChunkManager.getValue().cm();
 
-    auto chunk = chunkManager->findIntersectingChunkWithSimpleCollation(txn, migrateInfo.minKey);
+    shared_ptr<Chunk> chunk;
+    if (chunkManager->getShardKeyPattern().is2dSpherePattern()) {
+        // alternate code path for Geo Chunks, need both keys to identify
+        chunk = chunkManager->getGeoChunk(migrateInfo.minKey, migrateInfo.maxKey);
+    } else {
+        chunk = chunkManager->findIntersectingChunkWithSimpleCollation(txn, migrateInfo.minKey);
+    }
+
     invariant(chunk);
 
     // If the chunk is not found exactly as requested, the caller must have stale data

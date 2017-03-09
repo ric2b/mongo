@@ -150,6 +150,12 @@ public:
      */
     std::shared_ptr<Chunk> findNearestGeoChunk(const BSONObj& shardKey) const;
 
+
+    /*
+     * Gets the chunk with the correct min and max keys
+     */
+    std::shared_ptr<Chunk> getGeoChunk(const BSONObj& minKey, const BSONObj& maxKey) const;
+
     /*
      * Finds the intersecting chunk, assuming the simple collation.
      */

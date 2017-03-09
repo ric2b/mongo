@@ -454,6 +454,7 @@ Status ChunkManager::createGeoChunk(OperationContext* txn, const ShardId& shardI
                                     const double chunkLongitude, const double chunkLatitude,
                                     ChunkVersion* forcedVersion) {
         // TODO: Verify shard exists and longitude and latitude are valid
+        // TODO: Make sure a chunk with the same values doesn't already exist
         ChunkVersion version;
 
         if (forcedVersion != NULL) { // First chunk
@@ -487,6 +488,8 @@ Status ChunkManager::createGeoChunk(OperationContext* txn, const ShardId& shardI
             error() << errMsg;
             return Status(status.code(), errMsg);
         }
+
+        //version.incMinor();
 
         return Status::OK();
 }
@@ -682,6 +685,31 @@ shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) con
     }
 
     return closestChunk;
+}
+
+shared_ptr<Chunk> ChunkManager::getGeoChunk(const BSONObj& minKey, const BSONObj& maxKey) const {
+    double longitudeChunk = minKey.firstElement().Obj().firstElement().Double();
+    double latitudeChunk = maxKey.firstElement().Obj().firstElement().Double();
+
+    for (ChunkMap::const_iterator i = _chunkMap.begin(); i != _chunkMap.end(); ++i) {
+        shared_ptr<Chunk> currentChunk = i->second;
+
+        double longitudeCurrent = currentChunk->getMin().firstElement().Obj().firstElement().Double();
+        double latitudeCurrent = currentChunk->getMax().firstElement().Obj().firstElement().Double();
+        
+        if (longitudeCurrent == longitudeChunk && latitudeCurrent == latitudeChunk) {
+            return currentChunk;
+        }
+    }
+
+    msgasserted(40358,
+            str::stream() << "couldn't find a chunk with longitude: " << minKey
+                          << " and latitude: " << maxKey 
+                          << " for ns: " <<  _ns
+                          << " at version: "
+                          << _version.toString()
+                          << ", number of chunks: "
+                          << _chunkMap.size());
 }
 
 shared_ptr<Chunk> ChunkManager::findIntersectingChunkWithSimpleCollation(

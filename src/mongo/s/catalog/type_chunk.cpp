@@ -246,6 +246,12 @@ Status ChunkType::validate() const {
         }
     }
 
+    if (strcmp(_min.get().firstElement().Obj().firstElementFieldName(), "$longitude") == 0
+        || strcmp(_max.get().firstElement().Obj().firstElementFieldName(), "$latitude") == 0) {
+        // TODO: Other checks?
+        return Status::OK();
+    }
+
     // 'max' should be greater than 'min'.
     if (_min->woCompare(getMax()) >= 0) {
         return {ErrorCodes::BadValue,
