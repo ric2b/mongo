@@ -670,8 +670,8 @@ shared_ptr<Chunk> ChunkManager::findNearestGeoChunk(const BSONObj& shardKey) con
         double longitudeChunk = currentChunk->getMin().firstElement().Obj().firstElement().Double();
         double latitudeChunk = currentChunk->getMax().firstElement().Obj().firstElement().Double();
 
-        double longitudePoint = shardKey.firstElement().Array()[0].Double();
-        double latitudePoint = shardKey.firstElement().Array()[1].Double();
+        double longitudePoint = shardKey.firstElement().Array()[0].Number();
+        double latitudePoint = shardKey.firstElement().Array()[1].Number();
 
         double distance = geoDistance(longitudeChunk, latitudeChunk, longitudePoint, latitudePoint);
         
@@ -756,20 +756,23 @@ void ChunkManager::getShardIdsForQuery(OperationContext* txn,
     }
 
     if (_keyPattern.is2dSpherePattern()) {
-        if (cq->getQueryObj().firstElement().Obj().getField("type").String() != "Point") {
-            // Non-point data not supported
-            return;
-        }
+        if (cq->getQueryObj().isEmpty()) {
+            // Will have to check all the shards
+            // This should actually be for other searches as well that don't include the shardkey
+            shardIds->insert(_shardIds.begin(), _shardIds.end());
+            //Grid::get(txn)->shardRegistry()->getAllShardIds(*shardIds);
+        } else {
+            // this location shouldn't be hardcoded but don't know how to do it from _keyPattern, because of nesting
+            BSONObj coordinates = cq->getQueryObj().firstElement().Obj().getField("coordinates").Obj();
 
-        BSONObj coordinates = cq->getQueryObj().firstElement().Obj().getField("coordinates").Obj();
+            double longitude = coordinates.getField("0").Double();
+            double latitude = coordinates.getField("1").Double();
 
-        double longitude = coordinates.getField("0").Double();
-        double latitude = coordinates.getField("1").Double();
-
-        // Construct a ShardKey BSONObj()  
-        BSONObj shardKey = BSON(_keyPattern.getKeyPattern().toBSON().firstElementFieldName() << BSON_ARRAY(longitude << latitude));
-        shardIds->insert(findNearestGeoChunk(shardKey)->getShardId());
-        //shardIds->insert(_chunkMap.cbegin()->second->getShardId());
+            // Construct a ShardKey BSONObj()  
+            BSONObj shardKey = BSON(_keyPattern.getKeyPattern().toBSON().firstElementFieldName() << BSON_ARRAY(longitude << latitude));
+            shardIds->insert(findNearestGeoChunk(shardKey)->getShardId());
+            //shardIds->insert(_chunkMap.cbegin()->second->getShardId());
+        }        
     } else {
 
         // Transforms query into bounds for each field in the shard key
