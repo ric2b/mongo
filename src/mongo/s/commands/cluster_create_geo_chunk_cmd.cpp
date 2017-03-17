@@ -134,14 +134,14 @@ public:
         }
 
         double longitude = cmdObj.getField("longitude").Double();
-        if (longitude < -90 || longitude > 90) {
-            errmsg = "longitude must be between -90 and 90 degrees";
+        if (longitude < -180 || longitude > 180) {
+            errmsg = "longitude must be between -180 and 180 degrees";
             return false;
         }
 
         double latitude = cmdObj.getField("latitude").Double();
-        if (latitude < -180 || latitude > 180) {
-            errmsg = "latitude must be between -180 and 180 degrees";
+        if (latitude < -90 || latitude > 90) {
+            errmsg = "latitude must be between -90 and 90 degrees";
             return false;
         }
         

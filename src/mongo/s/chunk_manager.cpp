@@ -629,11 +629,11 @@ double ChunkManager::geoDistance(double longitudeChunk, double latitudeChunk,
     // Reference implementation: https://gist.github.com/ed-flanagan/e6dc6b8d3383ef5a354a
 
     // Using fassert because this should be checked for earlier, when creating chunks
-    fassert(40354, longitudeChunk <= 90. && longitudeChunk >= -90.);
-    fassert(40355, latitudeChunk <= 180. && latitudeChunk >= -180.);
+    fassert(40354, longitudeChunk <= 180. && longitudeChunk >= -180.);
+    fassert(40355, latitudeChunk <= 90. && latitudeChunk >= -90.);
     // While this may be user error?...
-    fassert(40356, longitudePoint <= 90. && longitudePoint >= -90.);
-    fassert(40357, latitudePoint <= 180. && latitudePoint >= -180.);
+    fassert(40356, longitudePoint <= 180. && longitudePoint >= -180.);
+    fassert(40357, latitudePoint <= 90. && latitudePoint >= -90.);
 
     double latChunkRadian = latitudeChunk * M_PIl/180.;
     double lonChunkRadian = longitudeChunk * M_PIl/180.;

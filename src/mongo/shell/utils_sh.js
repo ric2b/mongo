@@ -142,10 +142,10 @@ sh.createGeoChunk = function(fullName, shardName, longitude, latitude, options) 
     assert(typeof(shardName) == "string", "shardName must be a string"); 
     
     assert(typeof(longitude) == "number", "longitude must be a number (degrees)");
-    assert(longitude <= 90 && longitude >= -90, "longitude must be between -90 and 90"); 
+    assert(longitude <= 180 && longitude >= -180, "longitude must be between -180 and 180"); 
     
     assert(typeof(latitude) == "number", "latitude must be a number (degrees)"); 
-    assert(latitude <= 180 && latitude >= -180, "latitude must be a between -180 and 180"); 
+    assert(latitude <= 90 && latitude >= -90, "latitude must be a between -90 and 90"); 
  
     var cmd = {createGeoChunk: fullName, shardName: shardName, longitude: longitude, latitude: latitude}; 
     if (options) { 
