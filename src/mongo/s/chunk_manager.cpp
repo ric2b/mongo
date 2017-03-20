@@ -763,10 +763,10 @@ void ChunkManager::getShardIdsForQuery(OperationContext* txn,
             //Grid::get(txn)->shardRegistry()->getAllShardIds(*shardIds);
         } else {
             // this location shouldn't be hardcoded but don't know how to do it from _keyPattern, because of nesting
-            BSONObj coordinates = cq->getQueryObj().firstElement().Obj().getField("coordinates").Obj();
+            BSONObj coordinates = cq->getQueryObj().getField("geometry").Obj().getField("coordinates").Obj();
 
-            double longitude = coordinates.getField("0").Double();
-            double latitude = coordinates.getField("1").Double();
+            double longitude = coordinates.getField("0").Number();
+            double latitude = coordinates.getField("1").Number();
 
             // Construct a ShardKey BSONObj()  
             BSONObj shardKey = BSON(_keyPattern.getKeyPattern().toBSON().firstElementFieldName() << BSON_ARRAY(longitude << latitude));
